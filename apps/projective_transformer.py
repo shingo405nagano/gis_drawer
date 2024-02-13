@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict
 from typing import List
 
 import pyproj
-from shapely.geometry import Point
+import shapely
 
 
 @dataclass
@@ -14,7 +14,7 @@ class Coords:
     lat: float = None
     lons: List[float] = None
     lats: List[float] = None
-    points: List[Point] = None
+    points: List[shapely.geometry.Point] = None
     dict=asdict
 
 
@@ -54,13 +54,13 @@ class _TransformerProject(object):
             coords = Coords(
                 lon=_x,
                 lat=_y,
-                points=[Point(_x, _y)]
+                points=[shapely.geometry.Point(_x, _y)]
             )
         else:
             coords = Coords(
                 lons=_x,
                 lats=_y,
-                points=[Point(x, y) for x, y in zip(_x, _y)]
+                points=[shapely.geometry.Point(x, y) for x, y in zip(_x, _y)]
             )
         return coords
 

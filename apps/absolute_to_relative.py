@@ -6,10 +6,7 @@ from dataclasses import dataclass
 from typing import List
 
 import pyproj
-from shapely.geometry import LineString
-from shapely.geometry import MultiLineString
-from shapely.geometry import MultiPolygon
-from shapely.geometry import Polygon
+import shapely
 
 from disassembly import geom_disassembly
 from projective_transformer import transform
@@ -88,7 +85,10 @@ class _Absolute2Relative(object):
 
 
 def absolute_to_relative_coords(
-    geometry: LineString | MultiLineString | MultiPolygon | Polygon, 
+    geometry: shapely.geometry.LineString 
+        | shapely.geometry.MultiLineString 
+        | shapely.geometry.MultiPolygon 
+        | shapely.geometry.Polygon, 
     epsg: int,
     closed: bool=True
 ) -> RelatieCoordinates | List[RelatieCoordinates]:

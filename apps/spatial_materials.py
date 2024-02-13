@@ -1,7 +1,15 @@
+"""
+空間検索の材料にする為のPolygonを作成する。
+1. directional_rectangle
+   ベース地点からある方向に向かって長方形のバッファーを作成する。
+2.  directional_fan
+    ベース地点から扇状のPolygonを作成する。空港の侵入方向等に使用。
+
+"""
+
 import math
 
 import shapely
-
 
 
 def _to_point(base_point, distance, angle) -> shapely.geometry.Point:
