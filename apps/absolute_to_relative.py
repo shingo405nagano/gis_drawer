@@ -1,6 +1,7 @@
 """
-経緯度などの絶対座標から方位角や水平距離などの相対座標を計算する。
-
+1. absolute_to_relative_coords
+    経緯度などの絶対座標から方位角や水平距離などの相対座標を計算する。
+    
 """
 from dataclasses import dataclass
 from typing import List

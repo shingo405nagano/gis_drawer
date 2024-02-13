@@ -1,6 +1,6 @@
 """
-shapely.geometryのオブジェクトを分解する
-geom_disassemblyを使用してください。
+1. geom_disassembly
+    shapely.geometryのオブジェクトを分解する。
 """
 
 from typing import Any
