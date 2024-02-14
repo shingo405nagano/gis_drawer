@@ -86,10 +86,10 @@ class _Absolute2Relative(object):
 
 
 def absolute_to_relative_coords(
-    geometry: shapely.geometry.LineString 
-        | shapely.geometry.MultiLineString 
-        | shapely.geometry.MultiPolygon 
-        | shapely.geometry.Polygon, 
+    geometry: shapely.LineString 
+        | shapely.MultiLineString 
+        | shapely.MultiPolygon 
+        | shapely.Polygon, 
     epsg: int,
     closed: bool=True
 ) -> RelatieCoordinates | List[RelatieCoordinates]:
