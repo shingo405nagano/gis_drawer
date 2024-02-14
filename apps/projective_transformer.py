@@ -76,9 +76,9 @@ def transform(
 ) -> Coords:
     """
     投影変換モジュール
-    >>> transformer_project(39773.1479, 126992.7959, 6678, 4326)
+    >>> transform(39773.1479, 126992.7959, 6678, 4326)
     Coords(lon=141.30713264233432, lat=41.14274895389813, lons=None, lats=None, points=[<POINT (141.307 41.143)>])
-    >>> transformer_project([39773.1479, 39773.147955], [126992.7959, 126992.795955], 6678, 4326)
+    >>> transform([39773.1479, 39773.147955], [126992.7959, 126992.795955], 6678, 4326)
     Coords(lon=None, lat=None, lons=[141.30713264233432, 141.30713264299308], lats=[41.14274895389813, 41.14274895439072], points=[<POINT (141.307 41.143)>, <POINT (141.307 41.143)>])
     """
     tp = _TransformerProject(lon, lat, in_epsg, out_epsg)
