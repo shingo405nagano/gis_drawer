@@ -30,33 +30,33 @@ class GeomDisassembly(object):
 
     def pt_to_xyz(
         self, 
-        point: shapely.geometry.Point
+        point: shapely.Point
     ) -> Tuple[float, float]:
         return (point.x, point.y)
     
     def multi_pt_to_xyz(
         self, 
-        geom: shapely.geometry.MultiPoint
+        geom: shapely.MultiPoint
     ) -> Tuple[Tuple[float, float]]:
         geo_dict = geom.__geo_interface__
         return geo_dict.get('coordinates')
     
     def multi_pt_to_points(
         self, 
-        geom: shapely.geometry.MultiPoint
-    ) -> List[shapely.geometry.Point]:
+        geom: shapely.MultiPoint
+    ) -> List[shapely.Point]:
         return list(shapely.get_parts(geom))
     
     def line_to_xyz(
         self,
-        geom: shapely.geometry.LineString
+        geom: shapely.LineString
     ) -> List[Tuple[float, float]]:
         return list(geom.coords)
     
     def line_to_points(
         self,
-        geom: shapely.geometry.LineString
-    ) -> List[shapely.geometry.Point]:
+        geom: shapely.LineString
+    ) -> List[shapely.Point]:
         lst = []
         count = shapely.get_num_points(geom)
         for i in range(count):
@@ -66,7 +66,7 @@ class GeomDisassembly(object):
     
     def multi_line_to_xyzs(
         self,
-        geom: shapely.geometry.MultiLineString
+        geom: shapely.MultiLineString
     ) -> List[List[Tuple[float, float]]]:
         lst = []
         for line in shapely.get_parts(geom):
@@ -76,8 +76,8 @@ class GeomDisassembly(object):
     
     def multi_line_to_points(
         self,
-        geom: shapely.geometry.MultiLineString
-    ) -> List[List[shapely.geometry.Point]]:
+        geom: shapely.MultiLineString
+    ) -> List[List[shapely.Point]]:
         lst = []
         for line in shapely.get_parts(geom):
             points = []
@@ -90,14 +90,14 @@ class GeomDisassembly(object):
 
     def poly_to_xyz(
         self,
-        geom: shapely.geometry.Polygon
+        geom: shapely.Polygon
     ) -> List[Tuple[float, float]]:
         return list(geom.exterior.coords)
     
     def poly_to_points(
         self,
-        geom: shapely.geometry.Polygon
-    ) -> List[shapely.geometry.Point]:
+        geom: shapely.Polygon
+    ) -> List[shapely.Point]:
         lst = []
         line = geom.exterior
         count = shapely.get_num_points(line)
@@ -108,7 +108,7 @@ class GeomDisassembly(object):
 
     def multi_poly_to_xyzs(
         self,
-        geom: shapely.geometry.MultiPolygon
+        geom: shapely.MultiPolygon
     ) -> List[List[Tuple[float, float]]]:
         lst = []
         for poly in shapely.get_parts(geom):
@@ -118,8 +118,8 @@ class GeomDisassembly(object):
 
     def multi_poly_to_points(
         self,
-        geom: shapely.geometry.MultiPolygon
-    ) -> List[List[shapely.geometry.Point]]:
+        geom: shapely.MultiPolygon
+    ) -> List[List[shapely.Point]]:
         lst = []
         for poly in shapely.get_parts(geom):
             points = []
@@ -133,7 +133,7 @@ class GeomDisassembly(object):
 
     def _points_to_x_y_z(
         self, 
-        points: List[shapely.geometry.Point]
+        points: List[shapely.Point]
     ) -> List[List[float]]:
         xs = [c.x for c in points]
         ys = [c.y for c in points]
@@ -147,7 +147,7 @@ class GeomDisassembly(object):
     
     def _point_lst_to_x_y_z(
         self,
-        point_lst: List[List[shapely.geometry.Point]]
+        point_lst: List[List[shapely.Point]]
     ) -> List[List[float]]:
         xs = []
         ys = []
