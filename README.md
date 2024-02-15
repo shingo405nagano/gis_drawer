@@ -33,7 +33,7 @@ Altitude(altitude=108, source='10m')
 ### セミダイナミック補正（地殻変動補正）
 ```py
 >>> from apps.chiriin_api import semidynamic_exe
-# 今期から元期（がんき）へ
+# 今期から元期（げんき）へ
 >>> lon = 141.307135647
 >>> lat = 41.142745499
 >>> data_year = 2023
