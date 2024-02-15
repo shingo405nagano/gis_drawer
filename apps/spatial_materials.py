@@ -317,11 +317,12 @@ def regular_hexagon(
 
 def regular_hexagon_gdf(
     hectare: float, 
-    x_min: float, 
-    y_min: float, 
-    x_max: float, 
-    y_max: float, 
-    margin: float=0
+    geometry: 
+        shapely.LineString 
+        | shapely.MultiLineString 
+        | shapely.MultiPolygon 
+        | shapely.Polygon, 
+    margin: float=0,
 ) -> gpd.GeoDataFrame:
     """
     指定した範囲全体に正六角形のPolygonオブジェクトを作成し
@@ -329,14 +330,13 @@ def regular_hexagon_gdf(
     メルカトル図法を対象としています。\n
     Args:
         hectare(float): 面積（ヘクタール）
-        x_min(float): x_min
-        y_min(float): y_min
-        x_max(float): x_max
-        y_max(float): y_max
+        geometry(Any): shapely.geometry
         margin(float): 作成範囲に余白を追加するか
     Returns:
         gpd.GeoDataFrame
     """
-    hxgs = Hexagons(hectare, x_min, y_min, x_max, y_max, margin)
+    box = list(geometry.bounds)
+    box.append(margin)
+    hxgs = Hexagons(hectare, *box)
     gdf = hxgs.create_hexagons_gdf
     return gdf
