@@ -4,7 +4,6 @@
 """
 from dataclasses import dataclass
 from typing import Any
-from typing import Dict
 from typing import List
 from typing import Tuple
 
@@ -42,6 +41,7 @@ class DisassemblyPoint(object):
         if data_class:
             return XYZ(x, y, z)
         return [x, y, z]
+
 
 
 class DisassemblyLineString(object):
@@ -158,7 +158,7 @@ class DisassemblyPolygon(DisassemblyLineString):
         line = shapely.LineString(points)
         return self.line_to_x_y_z(line, data_class)
     
-    def __disassembly(
+    def _disassembly(
         self, 
         geom: shapely.MultiPolygon,
         func: Any,
@@ -180,15 +180,16 @@ class DisassemblyPolygon(DisassemblyLineString):
         return lst
     
     def multi_poly_to_xyz(self, geom: shapely.MultiPolygon, data_class: bool=False):
-        return self.__dissembly(geom, self._points_to_xyz, data_class)
+        return self._disassembly(geom, self._points_to_xyz, data_class)
 
     def multi_poly_to_x_y_z(self, geom: shapely.MultiPolygon, data_class: bool=False):
-        return self.__dissembly(geom, self._points_to_x_y_z, data_class)
+        return self._disassembly(geom, self._points_to_x_y_z, data_class)
         
 
 
 class Disassembly(DisassemblyPoint, DisassemblyPolygon):
     def __init__(self, geom: Any, response: str='point', data_class: bool=True):
+        super().__init__()
         self.geom = geom
         self.response = response
         self.data_class = data_class
@@ -274,3 +275,62 @@ def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) ->
         return disassembly.disassembly_multi_poly
     else:
         return None
+
+
+
+
+
+
+
+
+
+# data sets
+main_square = [
+    shapely.Point(0, 0),
+    shapely.Point(10, 0),
+    shapely.Point(10, 10),
+    shapely.Point(0, 10),
+]
+inner_square_1 = [
+    shapely.Point(1, 1),
+    shapely.Point(3, 1),
+    shapely.Point(3, 3),
+    shapely.Point(1, 3),
+]
+inner_square_2 = [
+    shapely.Point(5, 5),
+    shapely.Point(7, 5),
+    shapely.Point(7, 7),
+    shapely.Point(5, 7),
+]
+outer_square = [
+    shapely.Point(11, 0),
+    shapely.Point(15, 0),
+    shapely.Point(15, 15),
+    shapely.Point(11, 15),
+]
+outer_within = [
+    shapely.Point(12, 1),
+    shapely.Point(14, 1),
+    shapely.Point(14, 14),
+    shapely.Point(12, 14),
+]
+
+# create geometries
+multi_point = shapely.MultiPoint(main_square)
+line = shapely.LineString(main_square)
+multi_line = shapely.MultiLineString([main_square, inner_square_1])
+poly = shapely.Polygon(main_square)
+inner_poly1 = shapely.Polygon(inner_square_1)
+inner_poly2 = shapely.Polygon(inner_square_2)
+outer_poly = shapely.Polygon(outer_square)
+outer_within_poly = shapely.Polygon(outer_within)
+multi_poly = (
+    shapely
+    .MultiPolygon([poly, outer_poly])
+    .difference(inner_poly1)
+    .difference(inner_poly2)
+    .difference(outer_within_poly)
+)
+
+print(geom_disassembly(multi_poly, 'x_y_z'))
