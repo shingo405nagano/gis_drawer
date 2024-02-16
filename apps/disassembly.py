@@ -1,3 +1,7 @@
+"""
+1. geom_disassembly
+    shapelyのgeometryを分解する。
+"""
 from dataclasses import dataclass
 from typing import Any
 from typing import Dict
@@ -5,53 +9,6 @@ from typing import List
 from typing import Tuple
 
 import shapely
-
-main_square = [
-    shapely.Point(0, 0),
-    shapely.Point(10, 0),
-    shapely.Point(10, 10),
-    shapely.Point(0, 10),
-]
-inner_square_1 = [
-    shapely.Point(1, 1),
-    shapely.Point(3, 1),
-    shapely.Point(3, 3),
-    shapely.Point(1, 3),
-]
-inner_square_2 = [
-    shapely.Point(5, 5),
-    shapely.Point(7, 5),
-    shapely.Point(7, 7),
-    shapely.Point(5, 7),
-]
-outer_square = [
-    shapely.Point(11, 0),
-    shapely.Point(15, 0),
-    shapely.Point(15, 15),
-    shapely.Point(11, 15),
-]
-outer_within = [
-    shapely.Point(12, 1),
-    shapely.Point(14, 1),
-    shapely.Point(14, 14),
-    shapely.Point(12, 14),
-]
-# geometries
-points = shapely.MultiPoint(main_square)
-line = shapely.LineString(main_square)
-multi_line = shapely.MultiLineString([main_square, inner_square_1])
-poly = shapely.Polygon(main_square)
-inner_poly1 = shapely.Polygon(inner_square_1)
-inner_poly2 = shapely.Polygon(inner_square_2)
-outer_poly = shapely.Polygon(outer_square)
-outer_within_poly = shapely.Polygon(outer_within)
-multi_poly = (
-    shapely
-    .MultiPolygon([poly, outer_poly])
-    .difference(inner_poly1)
-    .difference(inner_poly2)
-    .difference(outer_within_poly)
-)
 
 
 @dataclass
@@ -65,13 +22,26 @@ class DisassemblyPoint(object):
     def pt_to_xyz(self, geom: shapely.Point) -> Tuple[float]:
         return (geom.x, geom.y)
     
+    def multi_pt_to_points(self, geom: shapely.MultiPoint) -> List[shapely.Point]:
+        return list(shapely.get_parts(geom))
+
     def multi_pt_to_xyz(self, geom: shapely.MultiPoint) -> Tuple[Tuple[float]]:
         geo_dict = geom.__geo_interface__
         return geo_dict.get('coordinates')
     
-    def multi_pt_to_points(self, geom: shapely.MultiPoint) -> List[shapely.Point]:
-        return list(shapely.get_parts(geom))
-
+    def multi_pt_to_x_y_z(self, geom: shapely.MultiPoint, data_class: bool=False) -> XYZ:
+        points = self.multi_pt_to_points(geom)
+        x, y, z = [], [], []
+        for point in points:
+            x.append(point.x)
+            y.append(point.y)
+            if point.has_z:
+                z.append(point.z)
+            else:
+                z.append(None)
+        if data_class:
+            return XYZ(x, y, z)
+        return [x, y, z]
 
 
 class DisassemblyLineString(object):
@@ -144,16 +114,18 @@ class DisassemblyPolygon(DisassemblyLineString):
     def poly_to_xyz(self, geom: shapely.Polygon) -> List[Tuple[float]]:
         return list(geom.exterior.coords)
     
-    def poly_to_x_y_z(self, geom: shapely.Polygon) -> List[List[float]]:
-        xyz_lst = self.poly_to_xyz(geom)
+    def poly_to_x_y_z(self, geom: shapely.Polygon, data_class: bool=False) -> List[List[float]]:
+        points = self.poly_to_points(geom)
         x, y, z = [], [], []
-        for xyz in xyz_lst:
-            x.append(xyz[0])
-            y.append(xyz[1])
-            if len(xyz) <= 2:
-                z.append(None)
+        for point in points:
+            x.append(point.x)
+            y.append(point.y)
+            if point.has_z:
+                z.append(point.z)
             else:
-                z.append(xyz[2])
+                z.append(None)
+        if data_class:
+            return XYZ(x, y, z)
         return [x, y, z]
     
     def multi_poly_to_points(
@@ -213,11 +185,92 @@ class DisassemblyPolygon(DisassemblyLineString):
     def multi_poly_to_x_y_z(self, geom: shapely.MultiPolygon, data_class: bool=False):
         return self.__dissembly(geom, self._points_to_x_y_z, data_class)
         
-                
+
+
 class Disassembly(DisassemblyPoint, DisassemblyPolygon):
     def __init__(self, geom: Any, response: str='point', data_class: bool=True):
-        pass
+        self.geom = geom
+        self.response = response
+        self.data_class = data_class
+    
+    @property
+    def disassembly_point(self) -> Any:
+        if self.response == 'point':
+            return self.geom
+        else:
+            return self.pt_to_xyz(self.geom)
+    
+    @property
+    def disassembly_multi_point(self) -> Any:
+        if self.response == 'xyz':
+            return self.multi_pt_to_xyz(self.geom)
+        elif self.response == 'x_y_z':
+            return self.multi_pt_to_x_y_z(self.geom, self.data_class)
+        else:
+            return self.multi_pt_to_points(self.geom)
+    
+    @property
+    def disassembly_line(self) -> Any:
+        if self.response == 'xyz':
+            return self.line_to_xyz(self.geom)
+        elif self.response == 'x_y_z':
+            return self.line_to_x_y_z(self.geom, self.data_class)
+        else:
+            return self.line_to_points(self.geom)
+    
+    @property
+    def disassembly_multi_line(self) -> Any:
+        if self.response == 'xyz':
+            return self.multi_line_to_xyz(self.geom)
+        elif self.response == 'x_y_z':
+            return self.multi_line_to_x_y_z(self.geom, self.data_class)
+        else:
+            return self.multi_line_to_points(self.geom)
+    
+    @property
+    def disassembly_poly(self) -> Any:
+        if self.response == 'xyz':
+            return self.poly_to_xyz(self.geom)
+        elif self.response == 'x_y_z':
+            return self.poly_to_x_y_z(self.geom, self.data_class)
+        else:
+            return self.poly_to_points(self.geom)
+        
+    @property
+    def disassembly_multi_poly(self) -> Any:
+        if self.response == 'xyz':
+            return self.multi_poly_to_xyz(self.geom, self.data_class)
+        elif self.response == 'x_y_z':
+            return self.multi_poly_to_x_y_z(self.geom, self.data_class)
+        else:
+            return self.multi_poly_to_points(self.geom, self.data_class)
+    
 
 
-if __name__ == '__main__':
-    disassembly = Disassembly()
+def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) -> Any:
+    """
+    Args:
+        geom(Any): shapely.Point | shapely.MultiPoint | shapely.LineString 
+            | shapely.MultiLineString | shapely.Polygon | shapely.MultiPolygon
+        response(str): 'point' | 'xyz' | 'x_y_z' 戻り値の種類を選択
+        data_class(bool): 
+            MultiPolygonなどはOuter,Innerなどがあり只のListだと解りづらいので
+    Returns:
+        Any:
+    """
+    disassembly = Disassembly(geom, response, data_class)
+    geom_id = shapely.get_type_id(geom)
+    if geom_id == 0:
+        return disassembly.disassembly_point
+    elif geom_id == 1:
+        return disassembly.disassembly_line
+    elif geom_id == 3:
+        return disassembly.disassembly_poly
+    elif geom_id == 4:
+        return disassembly.disassembly_multi_point
+    elif geom_id == 5:
+        return disassembly.disassembly_multi_line
+    elif geom_id == 6:
+        return disassembly.disassembly_multi_poly
+    else:
+        return None
