@@ -25,7 +25,6 @@ class Altitude:
     source: str
 
 
-
 def lonlat_to_altitude(lon: float, lat: float, time_out: int=20) -> float:
     """国土地理院のAPIを用いて経緯度から標高を取得する。\n
     https://maps.gsi.go.jp/development/altitude_s.html \n
@@ -37,9 +36,10 @@ def lonlat_to_altitude(lon: float, lat: float, time_out: int=20) -> float:
             altitude(float): 標高
             source(str): データソースの分解能
     Doctest:
-        >>> lonlat_to_altitude(141.307135647, 41.142745499)
+        >>> lon = 141.307135647
+        >>> lat = 41.142745499
+        >>> lonlat_to_altitude(lon, lat)
         Altitude(altitude=108, source='10m')
-
     """
     t = time.time()
     dummy = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0'
@@ -152,12 +152,13 @@ class SemiDynamicCorrection(object):
                 return Fixed(None, None, None)
 
 
+
 def semidynamic_exe(
     lon: float, 
     lat: float, 
     data_year: int, 
     time_out: float=30,
-    sokuchi: int=1
+    sokuchi: int=0
 ) -> Fixed:
     """
     セミダイナミック補正の実行（2次元補正）
@@ -177,15 +178,14 @@ def semidynamic_exe(
         >>> lat = 41.142745499
         >>> lon = 141.307135647
         >>> data_year = 2023
-        >>> semidynamic_exe(lon, lat, data_year, time_out=30)
+        >>> semidynamic_exe(lon, lat, data_year, time_out=30, sokuchi=0)
+        Fixed(lon=141.307138653, lat=41.142742044, altitude=None)
+        >>> semidynamic_exe(lon, lat, data_year, time_out=30, sokuchi=1)
         Fixed(lon=141.307132642, lat=41.142748956, altitude=None)
     """
     semidyna = SemiDynamicCorrection(lon, lat, data_year, time_out=time_out)
     semidyna.SOKUCHI = sokuchi
     return semidyna.fix
-
-
-
 
 
 
