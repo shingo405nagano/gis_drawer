@@ -1,62 +1,81 @@
-"""
-1. geom_disassembly
-    shapely.geometryのオブジェクトを分解する。
-"""
-
+from dataclasses import dataclass
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Tuple
 
 import shapely
 
+main_square = [
+    shapely.Point(0, 0),
+    shapely.Point(10, 0),
+    shapely.Point(10, 10),
+    shapely.Point(0, 10),
+]
+inner_square_1 = [
+    shapely.Point(1, 1),
+    shapely.Point(3, 1),
+    shapely.Point(3, 3),
+    shapely.Point(1, 3),
+]
+inner_square_2 = [
+    shapely.Point(5, 5),
+    shapely.Point(7, 5),
+    shapely.Point(7, 7),
+    shapely.Point(5, 7),
+]
+outer_square = [
+    shapely.Point(11, 0),
+    shapely.Point(15, 0),
+    shapely.Point(15, 15),
+    shapely.Point(11, 15),
+]
+outer_within = [
+    shapely.Point(12, 1),
+    shapely.Point(14, 1),
+    shapely.Point(14, 14),
+    shapely.Point(12, 14),
+]
+# geometries
+points = shapely.MultiPoint(main_square)
+line = shapely.LineString(main_square)
+multi_line = shapely.MultiLineString([main_square, inner_square_1])
+poly = shapely.Polygon(main_square)
+inner_poly1 = shapely.Polygon(inner_square_1)
+inner_poly2 = shapely.Polygon(inner_square_2)
+outer_poly = shapely.Polygon(outer_square)
+outer_within_poly = shapely.Polygon(outer_within)
+multi_poly = (
+    shapely
+    .MultiPolygon([poly, outer_poly])
+    .difference(inner_poly1)
+    .difference(inner_poly2)
+    .difference(outer_within_poly)
+)
 
-class GeomDisassembly(object):
-    def type_checker(self, geom: Any):
-        geom_id = shapely.get_type_id(geom)
-        if geom_id == 0:
-            return 'point'
-        elif geom_id == 1:
-            return 'linestring'
-        elif geom_id == 3:
-            return 'poly'
-        elif geom_id == 4:
-            return 'multi_point'
-        elif geom_id == 5:
-            return 'multi_linestring'
-        elif geom_id == 6:
-            return 'multi_poly'
-        else:
-            return None
 
-    def pt_to_xyz(
-        self, 
-        point: shapely.Point
-    ) -> Tuple[float, float]:
-        return (point.x, point.y)
+@dataclass
+class XYZ:
+    x: List[float]
+    y: List[float]
+    z: List[float]
+
+
+class DisassemblyPoint(object):
+    def pt_to_xyz(self, geom: shapely.Point) -> Tuple[float]:
+        return (geom.x, geom.y)
     
-    def multi_pt_to_xyz(
-        self, 
-        geom: shapely.MultiPoint
-    ) -> Tuple[Tuple[float, float]]:
+    def multi_pt_to_xyz(self, geom: shapely.MultiPoint) -> Tuple[Tuple[float]]:
         geo_dict = geom.__geo_interface__
         return geo_dict.get('coordinates')
     
-    def multi_pt_to_points(
-        self, 
-        geom: shapely.MultiPoint
-    ) -> List[shapely.Point]:
+    def multi_pt_to_points(self, geom: shapely.MultiPoint) -> List[shapely.Point]:
         return list(shapely.get_parts(geom))
-    
-    def line_to_xyz(
-        self,
-        geom: shapely.LineString
-    ) -> List[Tuple[float, float]]:
-        return list(geom.coords)
-    
-    def line_to_points(
-        self,
-        geom: shapely.LineString
-    ) -> List[shapely.Point]:
+
+
+
+class DisassemblyLineString(object):
+    def line_to_points(self, geom: shapely.LineString) -> List[shapely.Point]:
         lst = []
         count = shapely.get_num_points(geom)
         for i in range(count):
@@ -64,181 +83,141 @@ class GeomDisassembly(object):
             lst.append(pt)
         return lst
     
-    def multi_line_to_xyzs(
-        self,
-        geom: shapely.MultiLineString
-    ) -> List[List[Tuple[float, float]]]:
-        lst = []
-        for line in shapely.get_parts(geom):
-            coords = list(line.coords)
-            lst.append(coords)
-        return lst
+    def line_to_xyz(self, geom: shapely.LineString) -> List[Tuple[float]]:
+        return list(geom.coords)
     
+    def line_to_x_y_z(self, geom: shapely.LineString, data_class: bool=False) -> List[List[float]]:
+        xyz_lst = self.line_to_xyz(geom)
+        x, y, z = [], [], []
+        for xyz in xyz_lst:
+            x.append(xyz[0])
+            y.append(xyz[1])
+            if len(xyz) <= 2:
+                z.append(None)
+            else:
+                z.append(xyz[2])
+        if data_class:
+            return XYZ(x, y, z)
+        else:
+            return [x, y, z]
+
     def multi_line_to_points(
         self,
         geom: shapely.MultiLineString
     ) -> List[List[shapely.Point]]:
         lst = []
         for line in shapely.get_parts(geom):
-            points = []
-            count = shapely.get_num_points(line)
-            for i in range(count):
-                pt = shapely.get_point(line, i)
-                points.append(pt)
+            points = self.line_to_points(line)
             lst.append(points)
         return lst
+    
+    def multi_line_to_xyz(self, 
+        geom: shapely.MultiLineString
+    ) -> List[List[Tuple[float]]]:
+        lst = []
+        for line in shapely.get_parts(geom):
+            xyz = self.line_to_xyz(line)
+            lst.append(xyz)
+        return lst
+    
+    def multi_line_to_x_y_z(self, 
+        geom: shapely.MultiLineString,
+        data_class: bool=False
+    ) -> List[List[List[float]]]:
+        parts = []
+        for line in shapely.get_parts(geom):
+            parts.append(self.line_to_x_y_z(line, data_class))
+        return parts
+        
+    
 
-    def poly_to_xyz(
-        self,
-        geom: shapely.Polygon
-    ) -> List[Tuple[float, float]]:
+@dataclass
+class PolyParts:
+    outer: List[float | shapely.Point]
+    inners: List[float | shapely.Point]
+
+
+class DisassemblyPolygon(DisassemblyLineString):
+    def poly_to_points(self, geom: shapely.Polygon) -> List[shapely.Point]:
+        return [shapely.Point(p) for p in geom.exterior.coords]
+    
+    def poly_to_xyz(self, geom: shapely.Polygon) -> List[Tuple[float]]:
         return list(geom.exterior.coords)
     
-    def poly_to_points(
-        self,
-        geom: shapely.Polygon
-    ) -> List[shapely.Point]:
-        lst = []
-        line = geom.exterior
-        count = shapely.get_num_points(line)
-        for i in range(count):
-            pt = shapely.get_point(line, i)
-            lst.append(pt)
-        return lst
-
-    def multi_poly_to_xyzs(
-        self,
-        geom: shapely.MultiPolygon
-    ) -> List[List[Tuple[float, float]]]:
-        lst = []
-        for poly in shapely.get_parts(geom):
-            coords = list(poly.exterior.coords)
-            lst.append(coords)
-        return lst
-
-    def multi_poly_to_points(
-        self,
-        geom: shapely.MultiPolygon
-    ) -> List[List[shapely.Point]]:
-        lst = []
-        for poly in shapely.get_parts(geom):
-            points = []
-            line = poly.exterior
-            count = shapely.get_num_points(line)
-            for i in range(count):
-                pt = shapely.get_point(line, i)
-                points.append(pt)
-            lst.append(points)
-        return lst
-
-    def _points_to_x_y_z(
-        self, 
-        points: List[shapely.Point]
-    ) -> List[List[float]]:
-        xs = [c.x for c in points]
-        ys = [c.y for c in points]
-        zs = []
-        for p in points:
-            if shapely.has_z(p):
-                zs.append(p.z)
+    def poly_to_x_y_z(self, geom: shapely.Polygon) -> List[List[float]]:
+        xyz_lst = self.poly_to_xyz(geom)
+        x, y, z = [], [], []
+        for xyz in xyz_lst:
+            x.append(xyz[0])
+            y.append(xyz[1])
+            if len(xyz) <= 2:
+                z.append(None)
             else:
-                zs.append(None)
-        return [xs, ys, zs]
+                z.append(xyz[2])
+        return [x, y, z]
     
-    def _point_lst_to_x_y_z(
-        self,
-        point_lst: List[List[shapely.Point]]
-    ) -> List[List[float]]:
-        xs = []
-        ys = []
-        zs = []
-        for points in point_lst:
-            _xs, _ys, _zs = self._points_to_x_y_z(points)
-            xs += _xs
-            ys += _ys
-            zs += _zs
-        return [xs, ys, zs]
+    def multi_poly_to_points(
+        self, 
+        geom: shapely.MultiPolygon,
+        data_class: bool=False
+    ) -> List[List[List[float]]] | List[PolyParts]:
+        lst = []
+        for poly in shapely.get_parts(geom):
+            outer_ring = shapely.get_exterior_ring(poly)
+            outer_points = self.line_to_points(outer_ring)
+            inner_count = shapely.get_num_interior_rings(poly)
+            inner_rings = []
+            if 1 <= inner_count:
+                for i in range(inner_count):
+                    inner_ring = shapely.get_interior_ring(poly, i)
+                    inner_points = self.line_to_points(inner_ring)
+                    inner_rings.append(inner_points)
+            if data_class:
+                lst.append(PolyParts(outer_points, inner_rings))
+            else:
+                lst.append([outer_points, inner_rings])
+        return lst
     
+    def _points_to_xyz(self, points: List[shapely.Point], *args) -> List[Tuple[float]]:
+        line = shapely.LineString(points)
+        return self.line_to_xyz(line)
 
-def _point_to(geom: Any, resps: str):
-    disassembly = GeomDisassembly()
-    if resps == 'point':
-        return geom
-    else:
-        return disassembly.pt_to_xyz(geom)
-
-def _multi_point_to(geom: Any, resps: str):
-    disassembly = GeomDisassembly()
-    if resps == 'point':
-        return disassembly.multi_pt_to_points(geom)
-    elif resps == 'xyz':
-        return disassembly.multi_pt_to_xyz(geom)
-    else:
-        points = disassembly.multi_pt_to_points(geom)
-        return disassembly._points_to_x_y_z(points)
-
-def _line_to(geom: Any, resps: str):
-    disassembly = GeomDisassembly()
-    if resps == 'point':
-        return disassembly.line_to_points(geom)
-    elif resps == 'xyz':
-        return disassembly.line_to_xyz(geom)
-    else:
-        points = disassembly.line_to_points(geom)
-        return disassembly._points_to_x_y_z(points)
-
-def _multi_line_to(geom: Any, resps: str):
-    disassembly = GeomDisassembly()
-    if resps == 'point':
-        return disassembly.multi_line_to_points(geom)
-    elif resps == 'xyz':
-        return disassembly.multi_line_to_xyzs(geom)
-    else:
-        points = disassembly.multi_line_to_points(geom)
-        return disassembly._point_lst_to_x_y_z(points)
-
-def _poly_to(geom: Any, resps: str):
-    disassembly = GeomDisassembly()
-    if resps == 'point':
-        return disassembly.poly_to_points(geom)
-    elif resps == 'xyz':
-        return disassembly.poly_to_xyz(geom)
-    else:
-        points = disassembly.poly_to_points(geom)
-        return disassembly._points_to_x_y_z(points)
-
-def _multi_poly_to(geom: Any, resps: str):
-    disassembly = GeomDisassembly()
-    if resps == 'point':
-        return disassembly.multi_poly_to_points(geom)
-    elif resps == 'xyz':
-        return disassembly.multi_poly_to_xyzs(geom)
-    else:
-        points = disassembly.multi_poly_to_points(geom)
-        return disassembly._point_lst_to_x_y_z(points)
+    def _points_to_x_y_z(self, points: List[shapely.Point], data_class: bool=False) -> List[List[float]]:
+        line = shapely.LineString(points)
+        return self.line_to_x_y_z(line, data_class)
     
+    def __disassembly(
+        self, 
+        geom: shapely.MultiPolygon,
+        func: Any,
+        data_class: bool=False
+    ) -> List[List[List[float]]] | PolyParts:
+        parts_lst = self.multi_poly_to_points(geom, True)
+        lst = []
+        for parts in parts_lst:
+            outer = func(parts.outer, data_class)
+            inners = []
+            if parts.inners:
+                for inner in parts.inners:
+                    _inner = func(inner, data_class)
+                    inners.append(_inner)
+            if data_class:
+                lst.append(PolyParts(outer, inners))
+            else:
+                lst.append([outer, inners])
+        return lst
+    
+    def multi_poly_to_xyz(self, geom: shapely.MultiPolygon, data_class: bool=False):
+        return self.__dissembly(geom, self._points_to_xyz, data_class)
 
-def geom_disassembly(geom: Any, resps: str='point'):
-    """
-    Args:
-        geom(Any): Shapely geometry object.
-        response(str): 'point' | 'xyz' | 'x_y_z'
-    returns:
-        Any
-    """
-    disassembly = GeomDisassembly()
-    t = disassembly.type_checker(geom)
-    if t == 'point':
-        return _point_to(geom, resps)
-    elif t == 'multi_point':
-        return _multi_point_to(geom, resps)
-    elif t == 'linestring':
-        return _line_to(geom, resps)
-    elif t == 'multi_linestring':
-        return _multi_line_to(geom, resps)
-    elif t == 'poly':
-        return _poly_to(geom, resps)
-    elif t == 'multi_poly':
-        return _multi_poly_to(geom, resps)
-    else:
-        return None
+    def multi_poly_to_x_y_z(self, geom: shapely.MultiPolygon, data_class: bool=False):
+        return self.__dissembly(geom, self._points_to_x_y_z, data_class)
+        
+                
+class Disassembly(DisassemblyPoint, DisassemblyPolygon):
+    def __init__(self, geom: Any, response: str='point', data_class: bool=True):
+        pass
+
+
+if __name__ == '__main__':
+    disassembly = Disassembly()
