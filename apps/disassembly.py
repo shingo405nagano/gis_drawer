@@ -18,6 +18,7 @@ class XYZ:
 
 
 class DisassemblyPoint(object):
+    """shapely.geometry.Point あるいは shapely.geometry.MultiPoint を分解する。"""
     def pt_to_xyz(self, geom: shapely.Point) -> Tuple[float]:
         return (geom.x, geom.y)
     
@@ -45,6 +46,7 @@ class DisassemblyPoint(object):
 
 
 class DisassemblyLineString(object):
+    """shapely.geometry.LineString あるいは shapely.geometry.MultiLineString を分解する。"""
     def line_to_points(self, geom: shapely.LineString) -> List[shapely.Point]:
         lst = []
         count = shapely.get_num_points(geom)
@@ -108,6 +110,7 @@ class PolyParts:
 
 
 class DisassemblyPolygon(DisassemblyLineString):
+    """shapely.geometry.Polygon あるいは shapely.geometry.MultiPolygon を分解する。"""
     def poly_to_points(self, geom: shapely.Polygon) -> List[shapely.Point]:
         return [shapely.Point(p) for p in geom.exterior.coords]
     
@@ -258,6 +261,15 @@ def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) ->
             MultiPolygonなどはOuter,Innerなどがあり只のListだと解りづらいので
     Returns:
         Any:
+    Doctest:
+        >>> square = [shapely.Point(0, 0),shapely.Point(10, 0),shapely.Point(10, 10),shapely.Point(0, 10)]
+        >>> poly = shapely.geometry.Polygon(square)
+        >>> geom_disassembly(poly, 'point')
+        [<POINT (0 0)>, <POINT (10 0)>, <POINT (10 10)>, <POINT (0 10)>, <POINT (0 0)>]
+        >>> geom_disassembly(poly, 'xyz')
+        [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0), (0.0, 0.0)]
+        >>> geom_disassembly(poly, 'x_y_z')
+        XYZ(x=[0.0, 10.0, 10.0, 0.0, 0.0], y=[0.0, 0.0, 10.0, 10.0, 0.0], z=[None, None, None, None, None])
     """
     disassembly = Disassembly(geom, response, data_class)
     geom_id = shapely.get_type_id(geom)
@@ -275,62 +287,9 @@ def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) ->
         return disassembly.disassembly_multi_poly
     else:
         return None
+    
 
 
-
-
-
-
-
-
-
-# data sets
-main_square = [
-    shapely.Point(0, 0),
-    shapely.Point(10, 0),
-    shapely.Point(10, 10),
-    shapely.Point(0, 10),
-]
-inner_square_1 = [
-    shapely.Point(1, 1),
-    shapely.Point(3, 1),
-    shapely.Point(3, 3),
-    shapely.Point(1, 3),
-]
-inner_square_2 = [
-    shapely.Point(5, 5),
-    shapely.Point(7, 5),
-    shapely.Point(7, 7),
-    shapely.Point(5, 7),
-]
-outer_square = [
-    shapely.Point(11, 0),
-    shapely.Point(15, 0),
-    shapely.Point(15, 15),
-    shapely.Point(11, 15),
-]
-outer_within = [
-    shapely.Point(12, 1),
-    shapely.Point(14, 1),
-    shapely.Point(14, 14),
-    shapely.Point(12, 14),
-]
-
-# create geometries
-multi_point = shapely.MultiPoint(main_square)
-line = shapely.LineString(main_square)
-multi_line = shapely.MultiLineString([main_square, inner_square_1])
-poly = shapely.Polygon(main_square)
-inner_poly1 = shapely.Polygon(inner_square_1)
-inner_poly2 = shapely.Polygon(inner_square_2)
-outer_poly = shapely.Polygon(outer_square)
-outer_within_poly = shapely.Polygon(outer_within)
-multi_poly = (
-    shapely
-    .MultiPolygon([poly, outer_poly])
-    .difference(inner_poly1)
-    .difference(inner_poly2)
-    .difference(outer_within_poly)
-)
-
-print(geom_disassembly(multi_poly, 'x_y_z'))
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
