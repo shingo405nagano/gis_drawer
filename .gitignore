@@ -1,0 +1,4 @@
+datasets
+*.pyc
+__pycache__
+notebooks/satellites.ipynb
