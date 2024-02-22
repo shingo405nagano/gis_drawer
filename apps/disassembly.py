@@ -3,6 +3,7 @@
     shapelyのgeometryを分解する。
 """
 from dataclasses import dataclass
+import logging
 from typing import Any
 from typing import List
 from typing import Tuple
@@ -271,6 +272,11 @@ def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) ->
         >>> geom_disassembly(poly, 'x_y_z')
         XYZ(x=[0.0, 10.0, 10.0, 0.0, 0.0], y=[0.0, 0.0, 10.0, 10.0, 0.0], z=[None, None, None, None, None])
     """
+    try:
+        _ = geom.distance
+    except:
+        raise TypeError('Arguments is shapely object.')
+    
     disassembly = Disassembly(geom, response, data_class)
     geom_id = shapely.get_type_id(geom)
     if geom_id == 0:
@@ -288,6 +294,7 @@ def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) ->
     else:
         return None
     
+
 
 
 if __name__ == '__main__':
