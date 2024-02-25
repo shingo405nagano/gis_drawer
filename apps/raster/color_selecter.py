@@ -9,7 +9,6 @@ class ColorRanges:
     lower_thres: np.ndarray
     upper_thres: np.ndarray
 
-
 class ColorMaskHSV(object):
     def __range_100(self, value: int) -> int:
         return int((value / 100) * 255)
