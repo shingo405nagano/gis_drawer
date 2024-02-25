@@ -6,6 +6,7 @@ B8_IMG_HIROSAKI = "datasets/images_HIROSAKI/2023-08-10-00_00_2023-08-10-23_59_Se
 TRUE_IMG_AOMORI = "datasets/images_AOMORI/2023-08-10-00_00_2023-08-10-23_59_Sentinel-2_L2A_True_color.tiff"
 B8_IMG_AOMORI = "datasets/images_AOMORI/2023-08-10-00_00_2023-08-10-23_59_Sentinel-2_L2A_B08_(Raw).tiff"
 
+""" 日本のUTM座標系の範囲と対応するEPSGコード """
 JGD2011_UTM_RANGE_LST = [
     [120, 126],
     [126, 132],

@@ -2,6 +2,12 @@
 1. transform
     座標の投影変換のモジュール
 
+2. estimation_jgd_utm_from_geom
+    shapely.geometry.のオブジェクトから日本のUTM座標系を推定する
+
+3. estimation_jgd_utm_from_lon
+    経度から日本のUTM座標系を推定する
+
 """
 from dataclasses import dataclass, asdict
 import logging
@@ -11,9 +17,9 @@ from typing import List
 import pyproj
 import shapely
 
-from disassembly import geom_disassembly
-from settings import JGD2011_UTM_RANGE_LST
-from settings import JGD2011_UTM_CODES_DICT
+from apps.disassembly import geom_disassembly
+from apps.settings import JGD2011_UTM_RANGE_LST
+from apps.settings import JGD2011_UTM_CODES_DICT
 
 
 @dataclass
