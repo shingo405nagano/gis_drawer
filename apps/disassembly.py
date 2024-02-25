@@ -296,7 +296,6 @@ def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) ->
     
 
 
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
