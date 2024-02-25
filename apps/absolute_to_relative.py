@@ -10,7 +10,7 @@ import pyproj
 import shapely
 
 from disassembly import geom_disassembly
-from projective_transformer import transform
+from apps.spatial_reference import transform
 
 
 @dataclass
