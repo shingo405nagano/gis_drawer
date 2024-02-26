@@ -6,8 +6,7 @@
     rasterio.io.DatasetReaderを日本のUTM座標系に投影変換する
 
 Note:
-    WGS84で作成した地理院の数値標高モデルのDEMを使うと、座標が詳細ではないのでず
-    れる場合があるので注意。
+    投影変換は何度も行うとずれが生じるので注意。QGISでも同じ値が出る事を確認済み。
 """
 from dataclasses import dataclass
 from typing import Any
@@ -120,11 +119,3 @@ def re_project_raster_estimate_utm(
 
 
 
-
-"""
-Note:
-    座標がずれる。
-    raster.warp.calculate_default_transform
-    に原因がありそう。
-    affine.Affineで渡すのではなく、四隅の座標を指定できないか
-"""
