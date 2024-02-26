@@ -4,6 +4,10 @@
 
 2. reprojection_estimate_utm_jgd
     rasterio.io.DatasetReaderを日本のUTM座標系に投影変換する
+
+Note:
+    WGS84で作成した地理院の数値標高モデルのDEMを使うと、座標が詳細ではないのでず
+    れる場合があるので注意。
 """
 from dataclasses import dataclass
 from typing import Any
@@ -119,6 +123,8 @@ def re_project_raster_estimate_utm(
 
 """
 Note:
-    rasterio.boundsに格納されている値を使用しているが、桁数が少ないせいかずれる。
-    bounds以外に四隅の座標を取得する方法を探る。
+    座標がずれる。
+    raster.warp.calculate_default_transform
+    に原因がありそう。
+    affine.Affineで渡すのではなく、四隅の座標を指定できないか
 """
