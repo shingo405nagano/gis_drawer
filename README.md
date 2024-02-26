@@ -1,7 +1,10 @@
 # GISで使いたいモジュールを作成しています。
+notebooks に Example を置いているので詳しくはそちらを参考に。
 
-## absolute_to_relative.py :
-経緯度から真北の方位角と水平距離を計算します。
+## apps/absolute_to_relative.py :
+絶対座標から相対座標への変換など...
+
+### 経緯度から相対座標への変換
 ```py
 >>> import shapely
 >>> from apps.absolute_to_relative import absolute_to_relative_coords
@@ -16,7 +19,7 @@
 <br>
 
 
-## chiriin_api.py :
+## apps/chiriin_api.py :
 国土地理院の提供しているAPIを使用する為のモジュール
 https://vldb.gsi.go.jp/sokuchi/surveycalc/api_help.html
 
@@ -47,8 +50,8 @@ Fixed(lon=141.307132642, lat=41.142748956, altitude=None)
 <br>
 
 
-## disassembly.py :
-shapely.geometry.xxxのオブジェクトを分解する。
+## apps/disassembly.py :
+### shapely.geometry.xxxのオブジェクトを分解する
 引数として渡す`resps`で戻り値の型が変わる。
  - point = List[shapely.Point]
  - xyz = List[List[x0, y0, z0], List[x1, y1, z1], ...]
@@ -58,18 +61,18 @@ shapely.geometry.xxxのオブジェクトを分解する。
 >>> from apps.disassembly import geom_disassembly
 >>> ...
 >>> ...
->>> points = geom_disassembly(polygon, point)
+>>> points = geom_disassembly(polygon, 'point')
 >>> xyz = geom_disassembly(polygon, 'xyz')
 >>> x, y, z = geom_disassembly(polygon, 'x_y_z')
 ```
 <br>
 
-## spatial_matelials.py :
+
+## apps/spatial_matelials.py :
 空間検索で使いたい材料をまとめたファイル。
 ※メルカトル図法を対象としています。
 
-### directional_rectangle
-ベース地点からある方向に向かって長方形のバッファーを作成する。
+### ベース地点からある方向に向かって長方形のバッファーを作成する
 ```py
 >>> import shapely
 >>> from apps.spatial_materials import directional_rectangle
@@ -82,8 +85,7 @@ shapely.geometry.xxxのオブジェクトを分解する。
 >>> poly: shapely.Polygon = directional_rectangle(base_point, distance, angle, width)
 ```
 
-### directional_fan
-ベース地点から扇状のPolygonを作成する。
+### ベース地点から扇状のPolygonを作成する
 ```py
 >>> import shapely
 >>> from apps.spatial_materials import directional_fan
@@ -97,8 +99,8 @@ shapely.geometry.xxxのオブジェクトを分解する。
 ```
 
 
-### regular_hexagon
-指定座標を中心とし、指定面積の正六角形の`shapely.Polygon`を作成する。
+### 指定座標を中心とし、指定面積の正六角形の`shapely.Polygon`を作成する
+
 ```py
 >>> import shapely
 >>> from apps.spatial_materials import regular_hexagon
@@ -108,7 +110,7 @@ shapely.geometry.xxxのオブジェクトを分解する。
 >>> hexagon: shapely.Polygon = regular_hexagon(hectare, center_x, center_y)
 ```
 
-### regular_hexagon_gdf
+### オブジェクトの範囲全体に指定面積の正六角形の`shapely.Polygon`を作成する
 渡した`shapely.geometry.`の範囲に指定面積の正六角形の`shapely.Polygon`を、左上から
 右下に向かって並べる様にListに格納。
 順番に行番号と列番号を与えて`geopandas.GeoDataFrame`に入力して返す。
@@ -121,3 +123,7 @@ CRSは自分で設定してください。
 >>> hectare = 1.0
 >>> hexagon_gdf = regular_hexagon_gdf(hectare, polygon, margin=10)
 ```
+
+## apps/processing_raster.py
+ラスター関連の処理（作成中）
+
