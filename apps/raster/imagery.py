@@ -45,8 +45,8 @@ class RasterInfos(object):
         self.x_max = bounds.right
         self.y_min = bounds.bottom
         self.y_max = bounds.top
-        self.raster_rows = ds.width
-        self.raster_cols = ds.height
+        self.raster_rows = ds.height
+        self.raster_cols = ds.width
         self.stats = self.__get_stats_from_bands(ds)
         if ds.crs is not None:
             self.epsg = ds.crs.to_epsg()
