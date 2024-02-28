@@ -20,6 +20,7 @@ import rasterio.io
 import rasterio.warp
 
 from apps.raster.imagery import RasterDataSet
+from apps.settings import RASTER_DRIVER
 from apps.spatial_reference import transform
 from apps.spatial_reference import estimation_jgd_utm_from_lon
 
@@ -54,7 +55,7 @@ class ReProjection(object):
     @property
     def create_metadata_dict(self) -> Dict[str, Any]:
         meta_data = {
-            'driver': 'GTiff',
+            'driver': RASTER_DRIVER,
             'height': self.transformed.height,
             'width': self.transformed.width,
             'count': self.ds.count,
