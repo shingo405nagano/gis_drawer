@@ -5,297 +5,556 @@
 from dataclasses import dataclass
 import logging
 from typing import Any
+from typing import Callable
 from typing import List
-from typing import Tuple
+from typing import NamedTuple
 
 import shapely
 
 
+FORMAT = """________ %(levelname)s LOG ________
+    FuncName: %(funcName)s
+    Message: %(message)s
+    """
+logging.basicConfig(format=FORMAT)
+logger = logging.getLogger(__name__)
+
+
 @dataclass
-class XYZ:
-    x: List[float]
-    y: List[float]
-    z: List[float]
+class ResponseTypes:
+    """
+    分解後のデータタイプを記述している。
+    """
+    POINT = 0
+    XYZ = 1
+    X_Y_Z = 2
+    WKT = 3
+    WKB = 4
+    MERGED_POINT = 5
+    MERGED_XYZ = 6
+    MERGED_X_Y_Z = 7
+    MERGED_WKT = 8
+    MERGED_WKB = 9
+
+
+class XY(NamedTuple):
+    x: float | List[float]
+    y: float | List[float]
+
+
+class XYZ(XY):
+    x: float | List[float]
+    y: float | List[float]
+    z: float | List[float]
+
+
+
+class RingsParts(NamedTuple):
+    shell: shapely.LinearRing
+    holes: List[shapely.LinearRing]
+
+
+class PolyParts(NamedTuple):
+    shell: List[XY| XYZ | shapely.Point]
+    holes: List[XY| XYZ | shapely.Point]
+
+
 
 
 class DisassemblyPoint(object):
     """shapely.geometry.Point あるいは shapely.geometry.MultiPoint を分解する。"""
-    def pt_to_xyz(self, geom: shapely.Point) -> Tuple[float]:
-        return (geom.x, geom.y)
+    def xyz_from_point(self, geom: shapely.Point) -> XY | XYZ:
+        if shapely.has_z(geom):
+            return XYZ(geom.x, geom.y, geom.z)
+        return XY(geom.x, geom.y)
     
-    def multi_pt_to_points(self, geom: shapely.MultiPoint) -> List[shapely.Point]:
+    def points_from_multi_point(self, geom: shapely.MultiPoint) -> List[shapely.Point]:
         return list(shapely.get_parts(geom))
 
-    def multi_pt_to_xyz(self, geom: shapely.MultiPoint) -> Tuple[Tuple[float]]:
-        geo_dict = geom.__geo_interface__
-        return geo_dict.get('coordinates')
+    def xyz_from_multi_point(self, geom: shapely.MultiPoint) -> List[XY | XYZ]:
+        points = []
+        for point in geom.geoms:
+            xyz = self.xyz_from_point(point)
+            points.append(xyz)
+        return points
     
-    def multi_pt_to_x_y_z(self, geom: shapely.MultiPoint, data_class: bool=False) -> XYZ:
-        points = self.multi_pt_to_points(geom)
-        x, y, z = [], [], []
-        for point in points:
-            x.append(point.x)
-            y.append(point.y)
-            if point.has_z:
-                z.append(point.z)
-            else:
-                z.append(None)
-        if data_class:
-            return XYZ(x, y, z)
-        return [x, y, z]
+    def x_y_z_from_multi_point(self, geom: shapely.MultiPoint) -> XY | XYZ:
+        x_lst, y_lst, z_lst = [], [], []
+        for xyz in self.xyz_from_multi_point(geom):
+            x_lst.append(xyz.x)
+            y_lst.append(xyz.y)
+            if type(xyz) == XYZ:
+                z_lst.append(xyz.z)
+        if z_lst:
+            return XYZ(x_lst, y_lst, z_lst)
+        return XY(x_lst, y_lst)
+
+    def wkt_points_from_multi_point(self, geom: shapely.MultiPoint) -> List[str]:
+        return [pt.wkt for pt in list(geom.geoms)]
+    
+    def wkb_points_from_multi_point(self, geom: shapely.MultiPoint) -> List[bytes]:
+        return [pt.wkb for pt in list(geom.geoms)]
+
 
 
 
 class DisassemblyLineString(object):
     """shapely.geometry.LineString あるいは shapely.geometry.MultiLineString を分解する。"""
-    def line_to_points(self, geom: shapely.LineString) -> List[shapely.Point]:
+    def points_from_line(self, geom: shapely.LineString) -> List[shapely.Point]:
+        return [shapely.Point(pt) for pt in list(geom.coords)]
+
+    def wkt_from_line(self, geom: shapely.LineString) -> List[str]:
+        return [shapely.Point(pt).wkt for pt in list(geom.coords)]
+    
+    def wkb_from_line(self, geom: shapely.LineString) -> List[bytes]:
+        return [shapely.Point(pt).wkb for pt in list(geom.coords)]
+
+    def xyz_from_line(self, geom: shapely.LineString
+    ) -> List[XY[float] | XYZ[float]]:
         lst = []
-        count = shapely.get_num_points(geom)
-        for i in range(count):
-            pt = shapely.get_point(geom, i)
-            lst.append(pt)
-        return lst
-    
-    def line_to_xyz(self, geom: shapely.LineString) -> List[Tuple[float]]:
-        return list(geom.coords)
-    
-    def line_to_x_y_z(self, geom: shapely.LineString, data_class: bool=False) -> List[List[float]]:
-        xyz_lst = self.line_to_xyz(geom)
-        x, y, z = [], [], []
-        for xyz in xyz_lst:
-            x.append(xyz[0])
-            y.append(xyz[1])
-            if len(xyz) <= 2:
-                z.append(None)
+        for pt in list(geom.coords):
+            if len(pt) <= 2:
+                lst.append(XY(*pt))
             else:
-                z.append(xyz[2])
-        if data_class:
-            return XYZ(x, y, z)
-        else:
-            return [x, y, z]
+                lst.append(XYZ(*pt))
+        return lst
+    
+    def x_y_z_from_line(self, geom: shapely.LineString) -> XY | XYZ:
+        x_lst, y_lst, z_lst = [], [], []
+        for xyz in self.xyz_from_line(geom):
+            x_lst.append(xyz.x)
+            y_lst.append(xyz.y)
+            if type(xyz) == XYZ:
+                z_lst.append(xyz.z)
+        if z_lst:
+            return XYZ(x_lst, y_lst, z_lst)
+        return XY(x_lst, y_lst)
+    
+    def __func_multi_line(self, geom: shapely.MultiLineString, func: Callable
+    ) -> List[List[XY | XYZ | shapely.Point]]:
+        lst = []
+        for line in shapely.get_parts(geom):
+            lst.append(func(line))
+        return lst
 
-    def multi_line_to_points(
-        self,
-        geom: shapely.MultiLineString
+    def points_from_multi_line(self, geom: shapely.MultiLineString
     ) -> List[List[shapely.Point]]:
-        lst = []
-        for line in shapely.get_parts(geom):
-            points = self.line_to_points(line)
-            lst.append(points)
-        return lst
-    
-    def multi_line_to_xyz(self, 
-        geom: shapely.MultiLineString
-    ) -> List[List[Tuple[float]]]:
-        lst = []
-        for line in shapely.get_parts(geom):
-            xyz = self.line_to_xyz(line)
-            lst.append(xyz)
-        return lst
-    
-    def multi_line_to_x_y_z(self, 
-        geom: shapely.MultiLineString,
-        data_class: bool=False
-    ) -> List[List[List[float]]]:
-        parts = []
-        for line in shapely.get_parts(geom):
-            parts.append(self.line_to_x_y_z(line, data_class))
-        return parts
-        
-    
+        return self.__func_multi_line(geom, self.points_from_line)
 
-@dataclass
-class PolyParts:
-    outer: List[float | shapely.Point]
-    inners: List[float | shapely.Point]
+    def xyz_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[List[XY | XYZ]]:
+        return self.__func_multi_line(geom, self.xyz_from_line)
+    
+    def x_y_z_from_multi_line(self, geom: shapely.MultiLineString,
+    ) -> List[List[XY | XYZ]]:
+        return self.__func_multi_line(geom, self.x_y_z_from_line)
+
+    def wkt_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[List[str]]:
+        return self.__func_multi_line(geom, self.wkt_from_line)
+    
+    def wkb_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[List[bytes]]:
+        return self.__func_multi_line(geom, self.wkb_from_line)
+
+    def __func_merge(self, geom: shapely.MultiLineString, func: Callable
+    ) -> List[XY | XYZ | shapely.Point]:
+        merged_lst = []
+        for lst in func(geom):
+            merged_lst += lst
+        return merged_lst
+
+    def merged_points_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[shapely.Point]:
+        return self.__func_merge(geom, self.points_from_multi_line)
+
+    def merged_xyz_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[XY | XYZ]:
+        return self.__func_merge(geom, self.xyz_from_multi_line)
+    
+    def merged_x_y_z_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> XY | XYZ:
+        x_lst, y_lst, z_lst = [], [], []
+        for line in shapely.get_parts(geom):
+            xyz = self.x_y_z_from_line(line)
+            x_lst += xyz.x
+            y_lst += xyz.y
+            if type(xyz) == XYZ:
+                z_lst += xyz.z
+        if z_lst:
+            return XYZ(x_lst, y_lst, z_lst)
+        return XY(x_lst, y_lst)
+        
+    def merged_wkt_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[str]:
+        return self.__func_merge(geom, self.wkt_from_multi_line)
+
+    def merged_wkb_from_multi_line(self, geom: shapely.MultiLineString
+    ) -> List[bytes]:
+        return self.__func_merge(geom, self.wkb_from_multi_line)
+
+
 
 
 class DisassemblyPolygon(DisassemblyLineString):
     """shapely.geometry.Polygon あるいは shapely.geometry.MultiPolygon を分解する。"""
-    def poly_to_points(self, geom: shapely.Polygon) -> List[shapely.Point]:
-        return [shapely.Point(p) for p in geom.exterior.coords]
+    def repair_polygon(func):
+        def wrapper(self, geom):
+            if shapely.is_valid(geom):
+                return func(self, geom)
+            geom = shapely.make_valid(geom)
+            return func(self, geom)
+        return wrapper
     
-    def poly_to_xyz(self, geom: shapely.Polygon) -> List[Tuple[float]]:
-        return list(geom.exterior.coords)
+    @repair_polygon
+    def _single_disassembly(self, geom: shapely.Polygon) -> RingsParts:
+        outer = geom.exterior
+        inners = list(shapely.get_parts(geom.interiors))
+        return RingsParts(outer, inners)
+
+    def __func_single_poly(self, geom: shapely.Polygon, func: Callable
+    ) -> PolyParts:
+        rings_parts = self._single_disassembly(geom)
+        shell = func(rings_parts.shell)
+        holes = []
+        if rings_parts.holes:
+            for line in rings_parts.holes:
+                holes.append(func(line))
+        return PolyParts(shell, holes)
+
+    def points_from_poly(self, geom: shapely.Polygon) -> PolyParts:
+        return self.__func_single_poly(geom, self.points_from_line)
     
-    def poly_to_x_y_z(self, geom: shapely.Polygon, data_class: bool=False) -> List[List[float]]:
-        points = self.poly_to_points(geom)
-        x, y, z = [], [], []
-        for point in points:
-            x.append(point.x)
-            y.append(point.y)
-            if point.has_z:
-                z.append(point.z)
-            else:
-                z.append(None)
-        if data_class:
-            return XYZ(x, y, z)
-        return [x, y, z]
+    def xyz_from_poly(self, geom: shapely.Polygon) -> PolyParts:
+        return self.__func_single_poly(geom, self.xyz_from_line)
     
-    def multi_poly_to_points(
-        self, 
-        geom: shapely.MultiPolygon,
-        data_class: bool=False
-    ) -> List[List[List[float]]] | List[PolyParts]:
-        lst = []
+    def x_y_z_from_poly(self, geom: shapely.Polygon) -> PolyParts:
+        return self.__func_single_poly(geom, self.x_y_z_from_line)
+    
+    def wkt_from_poly(self, geom: shapely.Polygon) -> PolyParts:
+        return self.__func_single_poly(geom, self.wkt_from_line)
+    
+    def wkb_from_poly(self, geom: shapely.Polygon) -> PolyParts:
+        return self.__func_single_poly(geom, self.wkb_from_line)
+
+    def __func_multi_poly(self, geom: shapely.MultiPolygon, func: Callable
+    ) -> List[PolyParts]:
+        poly_parts_lst = []
         for poly in shapely.get_parts(geom):
-            outer_ring = shapely.get_exterior_ring(poly)
-            outer_points = self.line_to_points(outer_ring)
-            inner_count = shapely.get_num_interior_rings(poly)
-            inner_rings = []
-            if 1 <= inner_count:
-                for i in range(inner_count):
-                    inner_ring = shapely.get_interior_ring(poly, i)
-                    inner_points = self.line_to_points(inner_ring)
-                    inner_rings.append(inner_points)
-            if data_class:
-                lst.append(PolyParts(outer_points, inner_rings))
-            else:
-                lst.append([outer_points, inner_rings])
-        return lst
-    
-    def _points_to_xyz(self, points: List[shapely.Point], *args) -> List[Tuple[float]]:
-        line = shapely.LineString(points)
-        return self.line_to_xyz(line)
+            poly_parts_lst.append(self.__func_single_poly(poly, func))
+        return poly_parts_lst
 
-    def _points_to_x_y_z(self, points: List[shapely.Point], data_class: bool=False) -> List[List[float]]:
-        line = shapely.LineString(points)
-        return self.line_to_x_y_z(line, data_class)
+    def points_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> List[PolyParts]:
+        return self.__func_multi_poly(geom, self.points_from_line)
     
-    def _disassembly(
-        self, 
-        geom: shapely.MultiPolygon,
-        func: Any,
-        data_class: bool=False
-    ) -> List[List[List[float]]] | PolyParts:
-        parts_lst = self.multi_poly_to_points(geom, True)
+    def xyz_from_multi_poly(self, geom: shapely.MultiPolygon) -> List[PolyParts]:
+        return self.__func_multi_poly(geom, self.xyz_from_line)
+    
+    def x_y_z_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> List[PolyParts]:
+        return self.__func_multi_poly(geom, self.x_y_z_from_line)
+
+    def wkt_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> List[PolyParts]:
+        return self.__func_multi_poly(geom, self.wkt_points_from_line)
+
+    def wkb_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> List[PolyParts]:
+        return self.__func_multi_poly(geom, self.wkb_from_line)
+    
+    def __func_merge_poly(self, geom: shapely.MultiPolygon, func: Callable
+    ) -> List[Any]:
         lst = []
-        for parts in parts_lst:
-            outer = func(parts.outer, data_class)
-            inners = []
-            if parts.inners:
-                for inner in parts.inners:
-                    _inner = func(inner, data_class)
-                    inners.append(_inner)
-            if data_class:
-                lst.append(PolyParts(outer, inners))
-            else:
-                lst.append([outer, inners])
+        for poly_parts in func(geom):
+            lst += poly_parts.shell
+            if poly_parts.holes:
+                for hole in poly_parts.holes:
+                    lst += hole
         return lst
-    
-    def multi_poly_to_xyz(self, geom: shapely.MultiPolygon, data_class: bool=False):
-        return self._disassembly(geom, self._points_to_xyz, data_class)
 
-    def multi_poly_to_x_y_z(self, geom: shapely.MultiPolygon, data_class: bool=False):
-        return self._disassembly(geom, self._points_to_x_y_z, data_class)
+    def merged_points_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> List[shapely.Point]:
+        return self.__func_merge_poly(geom, self.points_from_multi_poly)
         
+    def merged_xyz_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> List[XY | XYZ]:
+        return self.__func_merge_poly(geom, self.xyz_from_poly)
+    
+    def merged_x_y_z_from_multi_poly(self, geom: shapely.MultiPolygon
+    ) -> XY | XYZ:
+        x_lst, y_lst, z_lst = [], [], []
+        for xyz in self.x_y_z_from_multi_poly(geom):
+            x_lst += xyz.x
+            y_lst += xyz.y
+            if type(XYZ) == XYZ:
+                z_lst += xyz.z
+        if z_lst:
+            return XYZ(x_lst, y_lst, z_lst)
+        return XY(x_lst, y_lst)
+    
+    def merged_wkt_from_multi_poly(self, geom: shapely.MultiPolygon) -> List[str]:
+        return self.__func_merge_poly(geom, self.wkt_from_multi_poly)
+
+    def merged_wkb_from_multi_poly(self, geom: shapely.MultiPolygon) -> List[bytes]:
+        return self.__func_merge_poly(geom, self.wkb_from_multi_poly)
 
 
-class Disassembly(DisassemblyPoint, DisassemblyPolygon):
-    def __init__(self, geom: Any, response: str='point', data_class: bool=True):
+
+
+class Disassemblies(DisassemblyPoint, DisassemblyPolygon):
+    def __init__(self, geom: Any, response_type: int):
         super().__init__()
         self.geom = geom
-        self.response = response
-        self.data_class = data_class
+        self.geom_id = self.check_geometry_type
+        self.response_type = response_type
+        self.disassembled = self.geom_disassembly
     
     @property
-    def disassembly_point(self) -> Any:
-        if self.response == 'point':
+    def check_geometry_type(self) -> int:
+        try:
+            geom_id = shapely.get_type_id(self.geom)
+            if 0 <= geom_id < 7:
+                return geom_id
+            else:
+                logger.error("Geometry type that cannot be processed.")
+                return None
+        except:
+            logger.error("Non-geometry was passed as an argument.")
+            return None
+
+    def _points_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
             return self.geom
-        else:
-            return self.pt_to_xyz(self.geom)
-    
-    @property
-    def disassembly_multi_point(self) -> Any:
-        if self.response == 'xyz':
-            return self.multi_pt_to_xyz(self.geom)
-        elif self.response == 'x_y_z':
-            return self.multi_pt_to_x_y_z(self.geom, self.data_class)
-        else:
-            return self.multi_pt_to_points(self.geom)
-    
-    @property
-    def disassembly_line(self) -> Any:
-        if self.response == 'xyz':
-            return self.line_to_xyz(self.geom)
-        elif self.response == 'x_y_z':
-            return self.line_to_x_y_z(self.geom, self.data_class)
-        else:
-            return self.line_to_points(self.geom)
-    
-    @property
-    def disassembly_multi_line(self) -> Any:
-        if self.response == 'xyz':
-            return self.multi_line_to_xyz(self.geom)
-        elif self.response == 'x_y_z':
-            return self.multi_line_to_x_y_z(self.geom, self.data_class)
-        else:
-            return self.multi_line_to_points(self.geom)
-    
-    @property
-    def disassembly_poly(self) -> Any:
-        if self.response == 'xyz':
-            return self.poly_to_xyz(self.geom)
-        elif self.response == 'x_y_z':
-            return self.poly_to_x_y_z(self.geom, self.data_class)
-        else:
-            return self.poly_to_points(self.geom)
-        
-    @property
-    def disassembly_multi_poly(self) -> Any:
-        if self.response == 'xyz':
-            return self.multi_poly_to_xyz(self.geom, self.data_class)
-        elif self.response == 'x_y_z':
-            return self.multi_poly_to_x_y_z(self.geom, self.data_class)
-        else:
-            return self.multi_poly_to_points(self.geom, self.data_class)
-    
-
-
-def geom_disassembly(geom: Any, response: str='point', data_class: bool=True) -> Any:
-    """
-    Args:
-        geom(Any): shapely.Point | shapely.MultiPoint | shapely.LineString 
-            | shapely.MultiLineString | shapely.Polygon | shapely.MultiPolygon
-        response(str): 'point' | 'xyz' | 'x_y_z' 戻り値の種類を選択
-        data_class(bool): 
-            MultiPolygonなどはOuter,Innerなどがあり只のListだと解りづらいので
-    Returns:
-        Any:
-    Doctest:
-        >>> square = [shapely.Point(0, 0),shapely.Point(10, 0),shapely.Point(10, 10),shapely.Point(0, 10)]
-        >>> poly = shapely.geometry.Polygon(square)
-        >>> geom_disassembly(poly, 'point')
-        [<POINT (0 0)>, <POINT (10 0)>, <POINT (10 10)>, <POINT (0 10)>, <POINT (0 0)>]
-        >>> geom_disassembly(poly, 'xyz')
-        [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0), (0.0, 0.0)]
-        >>> geom_disassembly(poly, 'x_y_z')
-        XYZ(x=[0.0, 10.0, 10.0, 0.0, 0.0], y=[0.0, 0.0, 10.0, 10.0, 0.0], z=[None, None, None, None, None])
-    """
-    try:
-        _ = geom.distance
-    except:
-        raise TypeError('Arguments is shapely object.')
-    
-    disassembly = Disassembly(geom, response, data_class)
-    geom_id = shapely.get_type_id(geom)
-    if geom_id == 0:
-        return disassembly.disassembly_point
-    elif geom_id == 1:
-        return disassembly.disassembly_line
-    elif geom_id == 3:
-        return disassembly.disassembly_poly
-    elif geom_id == 4:
-        return disassembly.disassembly_multi_point
-    elif geom_id == 5:
-        return disassembly.disassembly_multi_line
-    elif geom_id == 6:
-        return disassembly.disassembly_multi_poly
-    else:
+        elif self.geom_id <= 2:
+            return self.points_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.points_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.points_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.points_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.points_from_multi_poly(self.geom)
         return None
+    
+    def _xyz_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.xyz_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.xyz_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.xyz_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.xyz_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.xyz_from_multi_poly(self.geom)
+        return None
+    
+    def _x_y_z_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.x_y_z_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.x_y_z_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.x_y_z_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.x_y_z_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.x_y_z_from_multi_poly(self.geom)
+        return None
+    
+    def _wkt_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.wkt_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.wkt_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.wkt_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.wkt_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.wkt_from_multi_poly(self.geom)
+        return None
+    
+    def _wkb_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.wkb_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.wkb_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.wkb_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.wkb_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.wkb_from_multi_poly(self.geom)
+        return None
+    
+    def _merged_points_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.points_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.points_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.points_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.merged_points_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.merged_points_from_multi_poly(self.geom)
+        return None
+
+    def _merged_xyz_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.xyz_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.xyz_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.xyz_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.merged_xyz_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.merged_xyz_from_multi_poly(self.geom)
+        return None
+    
+    def _merged_x_y_z_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.x_y_z_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.x_y_z_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.x_y_z_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.merged_x_y_z_from_multi_line(self.geom)
+        elif self.geom_id == 6:
+            return self.merged_x_y_z_from_multi_poly(self.geom)
+        return None
+
+    def _merged_wkt_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.wkt_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.wkt_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.wkt_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.merged_wkt_from_multi_poly(self.geom)
+        elif self.geom_id == 6:
+            return self.wkt_from_multi_poly(self.geom)
+        return None
+    
+    def _merged_wkb_from(self):
+        if self.geom_id is None:
+            return None
+        elif self.geom_id == 0:
+            return self.geom
+        elif self.geom_id <= 2:
+            return self.wkb_from_line(self.geom)
+        elif self.geom_id == 3:
+            return self.wkb_from_poly(self.geom)
+        elif self.geom_id == 4:
+            return self.wkb_from_multi_point(self.geom)
+        elif self.geom_id == 5:
+            return self.merged_wkb_from_multi_poly(self.geom)
+        elif self.geom_id == 6:
+            return self.wkb_from_multi_poly(self.geom)
+        return None
+
+    @property
+    def geom_disassembly(self):
+        dic = {
+            0: self._points_from,
+            1: self._xyz_from,
+            2: self._x_y_z_from,
+            3: self._wkt_from,
+            4: self._wkb_from,
+            5: self._merged_points_from,
+            6: self._merged_xyz_from,
+            7: self._merged_x_y_z_from,
+            8: self._merged_wkt_from,
+            9: self._merged_wkb_from
+        }
+        return dic.get(self.response_type)()
+        
+
+
+
+def geom_disassembly(geom: Any, response_type: int) -> Any:
+    """
+    """
+    disassemblies = Disassemblies(geom, response_type)
+    return disassemblies.disassembled
     
 
 
 if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
+    # import doctest
+    # doctest.testmod()
+    main_square = [
+        shapely.Point(0, 0),
+        shapely.Point(10, 0),
+        shapely.Point(10, 10),
+        shapely.Point(0, 10),
+    ]
+    inner_square_1 = [
+        shapely.Point(1, 1),
+        shapely.Point(3, 1),
+        shapely.Point(3, 3),
+        shapely.Point(1, 3),
+    ]
+    inner_square_2 = [
+        shapely.Point(5, 5),
+        shapely.Point(7, 5),
+        shapely.Point(7, 7),
+        shapely.Point(5, 7),
+    ]
+    outer_square = [
+        shapely.Point(11, 0),
+        shapely.Point(15, 0),
+        shapely.Point(15, 15),
+        shapely.Point(11, 15),
+    ]
+    outer_within = [
+        shapely.Point(12, 1),
+        shapely.Point(14, 1),
+        shapely.Point(14, 14),
+        shapely.Point(12, 14),
+    ]
+
+    poly1 = shapely.Polygon(shell=main_square)
+    poly2 = shapely.Polygon(shell=main_square, holes=[inner_square_1, inner_square_2])
+    poly3 = shapely.Polygon(shell=outer_square, holes=[outer_within])
+    m_poly = shapely.MultiPolygon([poly2, poly3])
