@@ -1,4 +1,8 @@
 """
+Note:
+    1. Disassembliesの各関数の中身をDictに
+    2. Disassembliesの最後の関数はNoneの場合があるのでその処理を
+
 1. geom_disassembly
     shapelyのgeometryを分解する。
 """
@@ -42,7 +46,7 @@ class XY(NamedTuple):
     y: float | List[float]
 
 
-class XYZ(XY):
+class XYZ(NamedTuple):
     x: float | List[float]
     y: float | List[float]
     z: float | List[float]
@@ -55,8 +59,8 @@ class RingsParts(NamedTuple):
 
 
 class PolyParts(NamedTuple):
-    shell: List[XY| XYZ | shapely.Point]
-    holes: List[XY| XYZ | shapely.Point]
+    shell: List[XY | XYZ | shapely.Point]
+    holes: List[XY | XYZ | shapely.Point]
 
 
 
