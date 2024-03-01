@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ResponseTypes:
+class DisassembledTypes:
     """
     分解後のデータタイプを記述している。
     """
@@ -327,179 +327,149 @@ class Disassemblies(DisassemblyPoint, DisassemblyPolygon):
             logger.error("Non-geometry was passed as an argument.")
             return None
 
-    def _points_from(self):
-        if self.geom_id is None:
+    def _points_from(self) -> Any:
+        funcs = {
+            1: self.points_from_line,
+            2: self.points_from_line,
+            3: self.points_from_poly,
+            4: self.points_from_multi_point,
+            5: self.points_from_multi_line,
+            6: self.points_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.points_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.points_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.points_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.points_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.points_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _xyz_from(self):
-        if self.geom_id is None:
+    def _xyz_from(self) -> Any:
+        funcs = {
+            1: self.xyz_from_line,
+            2: self.xyz_from_line,
+            3: self.xyz_from_poly,
+            4: self.xyz_from_multi_point,
+            5: self.xyz_from_multi_line,
+            6: self.xyz_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.xyz_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.xyz_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.xyz_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.xyz_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.xyz_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _x_y_z_from(self):
-        if self.geom_id is None:
+    def _x_y_z_from(self) -> Any:
+        funcs = {
+            1: self.x_y_z_from_line,
+            2: self.x_y_z_from_line,
+            3: self.x_y_z_from_poly,
+            4: self.x_y_z_from_multi_point,
+            5: self.x_y_z_from_multi_line,
+            6: self.x_y_z_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.x_y_z_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.x_y_z_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.x_y_z_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.x_y_z_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.x_y_z_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _wkt_from(self):
-        if self.geom_id is None:
+    def _wkt_from(self) -> Any:
+        funcs = {
+            1: self.wkt_from_line,
+            2: self.wkt_from_line,
+            3: self.wkt_from_poly,
+            4: self.wkt_from_multi_point,
+            5: self.wkt_from_multi_line,
+            6: self.wkt_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.wkt_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.wkt_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.wkt_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.wkt_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.wkt_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _wkb_from(self):
-        if self.geom_id is None:
+    def _wkb_from(self) -> Any:
+        funcs = {
+            1: self.wkb_from_line,
+            2: self.wkb_from_line,
+            3: self.wkb_from_poly,
+            4: self.wkb_from_multi_point,
+            5: self.wkb_from_multi_line,
+            6: self.wkb_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.wkb_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.wkb_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.wkb_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.wkb_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.wkb_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _merged_points_from(self):
-        if self.geom_id is None:
+    def _merged_points_from(self) -> Any:
+        funcs = {
+            1: self.points_from_line,
+            2: self.points_from_line,
+            3: self.points_from_poly,
+            4: self.points_from_multi_point,
+            5: self.merged_points_from_multi_line,
+            6: self.merged_points_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.points_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.points_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.points_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.merged_points_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.merged_points_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
 
-    def _merged_xyz_from(self):
-        if self.geom_id is None:
+    def _merged_xyz_from(self) -> Any:
+        funcs = {
+            1: self.xyz_from_line,
+            2: self.xyz_from_line,
+            3: self.xyz_from_poly,
+            4: self.xyz_from_multi_point,
+            5: self.merged_xyz_from_multi_line,
+            6: self.merged_xyz_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.xyz_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.xyz_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.xyz_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.merged_xyz_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.merged_xyz_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _merged_x_y_z_from(self):
-        if self.geom_id is None:
+    def _merged_x_y_z_from(self) -> Any:
+        funcs = {
+            1: self.x_y_z_from_line,
+            2: self.x_y_z_from_line,
+            3: self.x_y_z_from_poly,
+            4: self.x_y_z_from_multi_point,
+            5: self.merged_x_y_z_from_multi_line,
+            6: self.merged_x_y_z_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.x_y_z_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.x_y_z_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.x_y_z_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.merged_x_y_z_from_multi_line(self.geom)
-        elif self.geom_id == 6:
-            return self.merged_x_y_z_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
 
-    def _merged_wkt_from(self):
-        if self.geom_id is None:
+    def _merged_wkt_from(self) -> Any:
+        funcs = {
+            1: self.wkt_from_line,
+            2: self.wkt_from_line,
+            3: self.wkt_from_poly,
+            4: self.wkt_from_multi_point,
+            5: self.merged_wkt_from_multi_line,
+            6: self.merged_wkt_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.wkt_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.wkt_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.wkt_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.merged_wkt_from_multi_poly(self.geom)
-        elif self.geom_id == 6:
-            return self.wkt_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
     
-    def _merged_wkb_from(self):
-        if self.geom_id is None:
+    def _merged_wkb_from(self) -> Any:
+        funcs = {
+            1: self.wkb_from_line,
+            2: self.wkb_from_line,
+            3: self.wkb_from_poly,
+            4: self.wkb_from_multi_point,
+            5: self.merged_wkb_from_multi_line,
+            6: self.merged_wkb_from_multi_poly
+        }
+        func = funcs.get(self.geom_id)
+        if funcs is None:
             return None
-        elif self.geom_id == 0:
-            return self.geom
-        elif self.geom_id <= 2:
-            return self.wkb_from_line(self.geom)
-        elif self.geom_id == 3:
-            return self.wkb_from_poly(self.geom)
-        elif self.geom_id == 4:
-            return self.wkb_from_multi_point(self.geom)
-        elif self.geom_id == 5:
-            return self.merged_wkb_from_multi_poly(self.geom)
-        elif self.geom_id == 6:
-            return self.wkb_from_multi_poly(self.geom)
-        return None
+        return func(self.geom)
 
     @property
-    def geom_disassembly(self):
-        dic = {
+    def geom_disassembly(self) -> Any:
+        funcs = {
             0: self._points_from,
             1: self._xyz_from,
             2: self._x_y_z_from,
@@ -511,54 +481,103 @@ class Disassemblies(DisassemblyPoint, DisassemblyPolygon):
             8: self._merged_wkt_from,
             9: self._merged_wkb_from
         }
-        return dic.get(self.response_type)()
+        func = funcs.get(self.response_type)
+        if func is None:
+            sentence = "A non-existent return value was specified."
+            sentence += f"Geometry type ID: {self.geom_id}, "
+            sentence += f"Request return type: {self.response_type}"
+            logger.error(sentence)
+            return None
+        return func()
         
 
 
 
 def geom_disassembly(geom: Any, response_type: int) -> Any:
     """
+    Args:
+        geom(shapely.geometry.XXX): 
+        response_type(int): \n
+            DisassembledTypesのクラスを用意しているのでそちらを使用するのが簡単です。\n
+            -------------------------------------\n
+            DisassembledTypes.POINT = 0     \n
+            DisassembledTypes.XYZ = 1     \n
+            DisassembledTypes.X_Y_Z = 2     \n
+            DisassembledTypes.WKT = 3     \n
+            DisassembledTypes.WKB = 4     \n
+            DisassembledTypes.MERGED_POINT = 5     \n
+            DisassembledTypes.MERGED_XYZ = 6     \n
+            DisassembledTypes.MERGED_X_Y_Z = 7     \n
+            DisassembledTypes.MERGED_WKT = 8     \n
+            DisassembledTypes.MERGED_WKB = 9
+    Returns:
+        shapely.Point as pt     \n
+        request_type=0 : \n
+            List[pt] | List[List[pt]] | PolyParts(outer=[pt], inners[[pt]])
+        request_type=1 : \n
+            List[(x,y,z)] | List[List[(x,y,z)]] | PolyParts(outer=[(x,y,z)], inners[[(x,y,z)], ])
+        request_type=2 : \n
+            List[pt] |  | PolyParts(outer=[pt], inners[[pt], ])
+        request_type=3 : 
+        request_type=4 : 
+        request_type=5 : 
+        request_type=6 : 
+        request_type=7 : 
+        request_type=8 : 
+        request_type=9 : 
     """
     disassemblies = Disassemblies(geom, response_type)
     return disassemblies.disassembled
     
 
 
+
+class PolygonType:
+    IDS = {
+        3: 'POLYGON',
+        6: 'MULTIPOLYGON'
+    }
+
+def disassemble_collection(geom):
+    """
+    shapely.geometry.Collectionは複数の異なるgeometryが入力されているので、それを
+    分解しPolygonだけを取り出す。また不正なgeometryがあれば修正し、1つの
+    MultiPolygonを作成する。
+    """
+    def validation(geom):
+        """
+        渡されたジオメトリーが不正な形ならば修正する。
+        これはGeometryCollectionなどでも、含まれる全てのgeometryを修正する。
+        """
+        try:
+            if shapely.is_missing(geom):
+                logger.warning('Geometry is None.')
+                return None
+            if shapely.is_valid(geom):
+                return geom
+        except:
+            logger.warning('Unintended movement.')
+            return None
+        geom = shapely.make_valid(geom)
+        return validation(geom)
+    
+    global GEOMETRIES
+    GEOMETRIES = []
+    def to_smallest_units(valid_geom):
+        """geometryを可能な限り分解する"""
+        pass
+
+    def select_poly_geom():
+        """geometry list からPolygonとMultiPolygon以外を削除する"""
+        pass
+
+    
+
+
+
+
 if __name__ == '__main__':
     # import doctest
     # doctest.testmod()
-    main_square = [
-        shapely.Point(0, 0),
-        shapely.Point(10, 0),
-        shapely.Point(10, 10),
-        shapely.Point(0, 10),
-    ]
-    inner_square_1 = [
-        shapely.Point(1, 1),
-        shapely.Point(3, 1),
-        shapely.Point(3, 3),
-        shapely.Point(1, 3),
-    ]
-    inner_square_2 = [
-        shapely.Point(5, 5),
-        shapely.Point(7, 5),
-        shapely.Point(7, 7),
-        shapely.Point(5, 7),
-    ]
-    outer_square = [
-        shapely.Point(11, 0),
-        shapely.Point(15, 0),
-        shapely.Point(15, 15),
-        shapely.Point(11, 15),
-    ]
-    outer_within = [
-        shapely.Point(12, 1),
-        shapely.Point(14, 1),
-        shapely.Point(14, 14),
-        shapely.Point(12, 14),
-    ]
-
-    poly1 = shapely.Polygon(shell=main_square)
-    poly2 = shapely.Polygon(shell=main_square, holes=[inner_square_1, inner_square_2])
-    poly3 = shapely.Polygon(shell=outer_square, holes=[outer_within])
-    m_poly = shapely.MultiPolygon([poly2, poly3])
+    from settings import COLLECTION_GEOMETRY
+    print(COLLECTION_GEOMETRY)
