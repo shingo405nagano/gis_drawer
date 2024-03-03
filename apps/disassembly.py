@@ -275,16 +275,16 @@ class DisassemblyPolygon(DisassemblyLineString):
         
     def merged_xyz_from_multi_poly(self, geom: shapely.MultiPolygon
     ) -> List[XY | XYZ]:
-        return self.__func_merge_poly(geom, self.xyz_from_poly)
+        return self.__func_merge_poly(geom, self.xyz_from_multi_poly)
     
     def merged_x_y_z_from_multi_poly(self, geom: shapely.MultiPolygon
     ) -> XY | XYZ:
         x_lst, y_lst, z_lst = [], [], []
-        for xyz in self.x_y_z_from_multi_poly(geom):
-            x_lst += xyz.x
-            y_lst += xyz.y
+        for xyz in self.merged_xyz_from_multi_poly(geom):
+            x_lst.append(xyz.x)
+            y_lst.append(xyz.y)
             if type(XYZ) == XYZ:
-                z_lst += xyz.z
+                z_lst.append(xyz.z)
         if z_lst:
             return XYZ(x_lst, y_lst, z_lst)
         return XY(x_lst, y_lst)
