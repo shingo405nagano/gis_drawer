@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 from typing import Callable
+from typing import Iterable
 from typing import List
 from typing import NamedTuple
 
@@ -202,15 +203,6 @@ class DisassemblyLineString(object):
 
 class DisassemblyPolygon(DisassemblyLineString):
     """shapely.geometry.Polygon あるいは shapely.geometry.MultiPolygon を分解する。"""
-    def repair_polygon(func):
-        def wrapper(self, geom):
-            if shapely.is_valid(geom):
-                return func(self, geom)
-            geom = shapely.make_valid(geom)
-            return func(self, geom)
-        return wrapper
-    
-    @repair_polygon
     def _single_disassembly(self, geom: shapely.Polygon) -> RingsParts:
         outer = geom.exterior
         inners = list(shapely.get_parts(geom.interiors))
@@ -493,6 +485,95 @@ class Disassemblies(DisassemblyPoint, DisassemblyPolygon):
 
 
 
+def repair_and_disassemble(func):
+    """"""
+    class Geometries(NamedTuple):
+        parts: List[Any]
+        no_collection_exists: bool
+
+    def validation(geom):
+        try:
+            if shapely.is_missing(geom):
+                return None
+            if shapely.is_valid(geom):
+                return geom
+        except:
+            return None
+        return shapely.make_valid(geom) 
+
+    def is_geometry(value):
+        geometries = (
+            shapely.Point,
+            shapely.LineString,
+            shapely.LinearRing,
+            shapely.Polygon,
+            shapely.MultiPoint,
+            shapely.MultiLineString,
+            shapely.MultiPolygon,
+            shapely.GeometryCollection
+        )
+        return isinstance(value, geometries)
+
+    def disassembly_is_unnecessary(geom):
+        if 0 <= shapely.get_type_id(geom) < 7:
+            return True
+        return False
+
+    def disassemble_collection(geom_lst):
+        result = []
+        exists = False
+        for geom in geom_lst:
+            if shapely.get_type_id(geom) != 7:
+                result.append(validation(geom))
+            elif shapely.get_type_id(geom) == 7:
+                result += [validation(g) for g in shapely.get_parts(geom)]
+                exists = True
+        return Geometries(result, exists)
+
+    def select_poly(geom_lst):
+        selected = []
+        for geom in geom_lst:
+            id_ = shapely.get_type_id(geom)
+            if (id_ == 3) | (id_ == 6):
+                selected.append(geom)
+        return selected
+
+    def select_and_merge_poly(geom_lst):
+        geoms = select_poly(geom_lst)
+        if geoms:
+            return shapely.union_all(geoms)
+        return None
+
+    def _repair_and_disassemble(collection: Any):
+        geometries = collection
+        if is_geometry(collection):
+            if shapely.is_valid(collection) == False:
+                collection = shapely.make_valid(collection)
+            if disassembly_is_unnecessary(collection):
+                return collection
+            parts = []
+            if shapely.get_type_id(collection) == 7:
+                parts = list(shapely.get_parts(collection))
+                geometries = disassemble_collection(parts)
+        elif isinstance(collection, Iterable):
+            geometries = disassemble_collection(collection)
+        else:
+            return None
+        if geometries.no_collection_exists:
+            return _repair_and_disassemble(geometries.parts)
+        else:
+            return select_and_merge_poly(geometries.parts)
+    
+    def wrapper(*args, **kwargs):
+        args_lst = [v for v in args]
+        geom = args_lst[0]
+        args_lst[0] = _repair_and_disassemble(geom)
+        return func(*args_lst, **kwargs)
+    return wrapper
+
+
+
+@repair_and_disassemble
 def geom_disassembly(geom: Any, response_type: int) -> Any:
     """
     Args:
@@ -528,56 +609,11 @@ def geom_disassembly(geom: Any, response_type: int) -> Any:
     """
     disassemblies = Disassemblies(geom, response_type)
     return disassemblies.disassembled
-    
 
 
-
-class PolygonType:
-    IDS = {
-        3: 'POLYGON',
-        6: 'MULTIPOLYGON'
-    }
-
-def disassemble_collection(geom):
-    """
-    shapely.geometry.Collectionは複数の異なるgeometryが入力されているので、それを
-    分解しPolygonだけを取り出す。また不正なgeometryがあれば修正し、1つの
-    MultiPolygonを作成する。
-    """
-    def validation(geom):
-        """
-        渡されたジオメトリーが不正な形ならば修正する。
-        これはGeometryCollectionなどでも、含まれる全てのgeometryを修正する。
-        """
-        try:
-            if shapely.is_missing(geom):
-                logger.warning('Geometry is None.')
-                return None
-            if shapely.is_valid(geom):
-                return geom
-        except:
-            logger.warning('Unintended movement.')
-            return None
-        geom = shapely.make_valid(geom)
-        return validation(geom)
-    
-    global GEOMETRIES
-    GEOMETRIES = []
-    def to_smallest_units(valid_geom):
-        """geometryを可能な限り分解する"""
-        pass
-
-    def select_poly_geom():
-        """geometry list からPolygonとMultiPolygon以外を削除する"""
-        pass
-
-    
-
-
-
-
-if __name__ == '__main__':
-    # import doctest
-    # doctest.testmod()
-    from settings import COLLECTION_GEOMETRY
-    print(COLLECTION_GEOMETRY)
+"""
+Note:
+    merge 関連のモジュールが動作しない。
+    repair_and_disassembleでは現在Polygonを返す事しか想定していない。
+    Point、Line、Polygonそれぞれ選択できるのがベスト
+"""
